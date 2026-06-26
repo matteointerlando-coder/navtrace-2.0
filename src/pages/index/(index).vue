@@ -5,11 +5,15 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount } from 'vue';
+import { onMounted, onBeforeUnmount, watch } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useVesselDataStore } from '../../stores/vessel-data-store';
 
 let map: L.Map | null = null;
+let currentMarker: L.Marker | null = null;
+
+const vesselDataStore = useVesselDataStore();
 
 onMounted(() => {
   map = L.map('map', {
@@ -21,6 +25,15 @@ onMounted(() => {
     minZoom: 3,
     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(map);
+});
+
+watch(() => vesselDataStore.points, (points) => {
+  if (!map || points.length === 0) return;
+  const first = points[0];
+  if (!first) return;
+  currentMarker?.remove();
+  currentMarker = L.marker([first.y, first.x]).addTo(map);
+  map.setView([first.y, first.x], 6);
 });
 
 onBeforeUnmount(() => {

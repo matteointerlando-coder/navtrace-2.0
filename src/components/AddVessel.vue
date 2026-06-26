@@ -86,10 +86,12 @@
 import { ref, computed, watch } from 'vue';
 import { fetchVesselHistory } from '../api/vesselService';
 import { addVesselFormStore } from '../stores/add-vessel-store';
+import { useVesselDataStore } from '../stores/vessel-data-store';
 
 const emit = defineEmits<{ done: [] }>();
 
 const store = addVesselFormStore();
+const vesselDataStore = useVesselDataStore();
 
 const mmsi = ref(store.mmsi ?? '');
 const name = ref(store.vessel_name ?? '');
@@ -116,6 +118,7 @@ async function onSubmit() {
 
   try {
     const points = await fetchVesselHistory(mmsi.value, start_date.value, end_date.value);
+    vesselDataStore.setPoints(points);
     emit('done');
   } catch (err) {
     error.value = 'Errore nel recupero dei dati. Controlla MMSI e date.';
