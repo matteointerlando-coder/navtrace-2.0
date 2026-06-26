@@ -83,15 +83,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { fetchVesselHistory } from '../api/vesselService';
+import { addVesselFormStore } from '../stores/add-vessel-store';
 
 const emit = defineEmits<{ done: [] }>();
 
-const mmsi = ref('');
-const name = ref('');
-const start_date = ref('');
-const end_date = ref('');
+const store = addVesselFormStore();
+
+const mmsi = ref(store.mmsi ?? '');
+const name = ref(store.vessel_name ?? '');
+const start_date = ref(store.start_date ?? '');
+const end_date = ref(store.end_date ?? '');
+
+watch([name, mmsi, start_date, end_date], ([n, m, sd, ed]) => {
+  store.update(n || undefined, m || undefined, sd || undefined, ed || undefined);
+});
 const loading = ref(false);
 const error = ref<string | null>(null);
 
