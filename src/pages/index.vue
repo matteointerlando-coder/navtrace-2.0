@@ -13,16 +13,12 @@
       <q-list>
         <q-item-label header> Essential Links </q-item-label>
 
-        <q-item clickable @click="showAddVessel = true">
-          <q-item-section avatar>
-            <q-icon name="add" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Add Vessel</q-item-label>
-          </q-item-section>
-        </q-item>
 
-        <EssentialLink v-for="link in linksList" :key="link.label" v-bind="link" />
+        <q-item clickable @click="showAddVessel = true">
+          <q-item-section avatar><q-icon name="add" /></q-item-section>
+          <q-item-section><q-item-label>Add Vessels</q-item-label></q-item-section>
+        </q-item>
+       
         <SearchVessel v-model="mmsi" :loading="loading" @search="searchByMmsi" />
 
       </q-list>
@@ -42,18 +38,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import EssentialLink, { type EssentialLinkProps } from '@/components/EssentialLink.vue';
+
 import SearchVessel from '@/components/searchVessel.vue';
 import AddVessel from '@/components/AddVessel.vue';
 import { useVesselSearch } from '@/composables/useVesselSearch';
 
-const linksList: EssentialLinkProps[] = [
-  {
-    label: 'Add Multiple Vessels',
-    icon: 'add',
-    to: '/',
-  },
-];
+
 
 const leftDrawerOpen = ref(false);
 const showAddVessel = ref(false);
