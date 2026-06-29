@@ -37,26 +37,10 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       Record<never, never>,
       | '//(index)'
-      | '//add-vessel'
-      | '//second'
     >,
     '//(index)': RouteRecordInfo<
       '//(index)',
       '/',
-      Record<never, never>,
-      Record<never, never>,
-      | never
-    >,
-    '//add-vessel': RouteRecordInfo<
-      '//add-vessel',
-      '/add-vessel',
-      Record<never, never>,
-      Record<never, never>,
-      | never
-    >,
-    '//second': RouteRecordInfo<
-      '//second',
-      '/second',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -92,8 +76,6 @@ declare module 'vue-router/auto-routes' {
       routes:
         | '/'
         | '//(index)'
-        | '//add-vessel'
-        | '//second'
       views:
         | 'default'
       pathParamNames:
@@ -102,22 +84,6 @@ declare module 'vue-router/auto-routes' {
     'src/pages/index/(index).vue': {
       routes:
         | '//(index)'
-      views:
-        | never
-      pathParamNames:
-        | never
-    }
-    'src/pages/index/add-vessel.vue': {
-      routes:
-        | '//add-vessel'
-      views:
-        | never
-      pathParamNames:
-        | never
-    }
-    'src/pages/index/second.vue': {
-      routes:
-        | '//second'
       views:
         | never
       pathParamNames:

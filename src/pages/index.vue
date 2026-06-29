@@ -21,6 +21,14 @@
        
         <SearchVessel v-model="mmsi" :loading="loading" @search="searchByMmsi" />
 
+        <q-separator v-if="vesselDataStore.vessels.length" spaced />
+
+        <VesselCard
+          v-for="vessel in vesselDataStore.vessels"
+          :key="vessel.id"
+          :vessel="vessel"
+        />
+
       </q-list>
     </q-drawer>
 
@@ -41,10 +49,13 @@ import { ref } from 'vue';
 
 import SearchVessel from '@/components/searchVessel.vue';
 import AddVessel from '@/components/AddVessel.vue';
+import VesselCard from '@/components/VesselCard.vue';
 import { useVesselSearch } from '@/composables/useVesselSearch';
+import { useVesselDataStore } from '@/stores/vessel-data-store';
 
 
 
+const vesselDataStore = useVesselDataStore();
 const leftDrawerOpen = ref(false);
 const showAddVessel = ref(false);
 

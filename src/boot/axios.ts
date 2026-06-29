@@ -15,7 +15,7 @@ export default defineBoot(() => {
     }
     console.log('[API REQUEST]', config.method?.toUpperCase(), (config.baseURL ?? '') + (config.url ?? ''), config.params);
     console.log('[AUTH] authenticated:', keycloak.authenticated, '| token presente:', !!keycloak.token, '| scaduto:', keycloak.isTokenExpired());
-    console.log('Token:', keycloak.token);
+    //console.log('Token:', keycloak.token);
     return config;
   });
 

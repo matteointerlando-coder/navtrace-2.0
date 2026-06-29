@@ -40,7 +40,7 @@ export default defineBoot(async ({ router }) => {
 
   // Navigation guard: protegge tutte le route non pubbliche
   router.beforeEach((to) => {
-    console.log('Router guard: ', to.path, ' — Authenticated: ', keycloak.authenticated);
+    //console.log('Router guard: ', to.path, ' — Authenticated: ', keycloak.authenticated);
     if (PUBLIC_PATHS.includes(to.path)) return true;
 
     if (!keycloak.authenticated) {

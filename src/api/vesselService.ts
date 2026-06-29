@@ -12,7 +12,7 @@ export interface ShortPositionUpdate {
   h: number | null; // heading (gradi)
 }
 
-// Converte "YYYY-MM-DD HH:mm" (formato del date picker Quasar) in ISO8601
+// Converte "YYYY-MM-DD HH:mm" in ISO8601
 // che l'API si aspetta: "YYYY-MM-DDTHH:mm:00.000Z"
 function toIso(dateStr: string): string {
   return dateStr.replace(' ', 'T') + ':00.000Z';
@@ -23,14 +23,15 @@ export async function fetchVesselHistory(
   periodStart: string,
   periodEnd: string,
 ): Promise<ShortPositionUpdate[]> {
+  const params = {
+    periodStart: toIso(periodStart),
+    periodEnd: toIso(periodEnd),
+  };
+  console.log('vesselHistory request:', { mmsi, ...params });
   const response = await api.get<ShortPositionUpdate[]>(
     `/api/targets/${mmsi}/history`,
-    {
-      params: {
-        periodStart: toIso(periodStart),
-        periodEnd: toIso(periodEnd),
-      },
-    },
+    { params },
   );
+  console.log('vesselHistory raw response:', response.data);
   return response.data;
 }

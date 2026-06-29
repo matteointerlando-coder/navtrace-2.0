@@ -118,7 +118,13 @@ async function onSubmit() {
 
   try {
     const points = await fetchVesselHistory(mmsi.value, start_date.value, end_date.value);
-    vesselDataStore.setPoints(points);
+    vesselDataStore.addVessel({
+      vessel_name: name.value || null,
+      mmsi: mmsi.value,
+      start_date: start_date.value,
+      end_date: end_date.value,
+      points,
+    });
     emit('done');
   } catch (err) {
     error.value = 'Errore nel recupero dei dati. Controlla MMSI e date.';
