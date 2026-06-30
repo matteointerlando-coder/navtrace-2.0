@@ -19,6 +19,7 @@ export default defineBoot(() => {
     return config;
   });
 
+  /*
   api.interceptors.response.use(
     (response) => {
       console.log('[API RESPONSE]', response.status, response.config.url, response.data);
@@ -28,5 +29,5 @@ export default defineBoot(() => {
       console.error('[API ERROR]', error.response?.status, error.response?.config?.url, error.response?.data);
       return Promise.reject(error instanceof Error ? error : new Error(String(error)));
     },
-  );
+  );*/
 });

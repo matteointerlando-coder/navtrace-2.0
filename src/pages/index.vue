@@ -19,15 +19,37 @@
           <q-item-section><q-item-label>Add Vessels</q-item-label></q-item-section>
         </q-item>
        
-        <SearchVessel v-model="mmsi" :loading="loading" @search="searchByMmsi" />
+        <!--<SearchVessel v-model="mmsi" :loading="loading" @search="searchByMmsi" />-->
 
-        <q-separator v-if="vesselDataStore.vessels.length" spaced />
+        <template v-if="vesselDataStore.vessels.length">
+          <q-separator spaced />
 
-        <VesselCard
-          v-for="vessel in vesselDataStore.vessels"
-          :key="vessel.id"
-          :vessel="vessel"
-        />
+          <q-item>
+            <q-item-section>
+              <q-item-label caption>Tracks</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-toggle
+                :model-value="allVisible"
+                label="Show all"
+                size="sm"
+                @update:model-value="vesselDataStore.setAllVisible($event)"
+              />
+            </q-item-section>
+          </q-item>
+
+          <VesselCard
+            v-for="vessel in vesselDataStore.vessels"
+            :key="vessel.id"
+            :vessel="vessel"
+          />
+
+          <q-item>
+            <q-item-section>
+              <q-btn flat color="negative" icon="delete_sweep" label="Clear all" no-caps @click="vesselDataStore.clearAll()" />
+            </q-item-section>
+          </q-item>
+        </template>
 
       </q-list>
     </q-drawer>
@@ -45,12 +67,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
-import SearchVessel from '@/components/searchVessel.vue';
+//import SearchVessel from '@/components/searchVessel.vue';
 import AddVessel from '@/components/AddVessel.vue';
 import VesselCard from '@/components/VesselCard.vue';
-import { useVesselSearch } from '@/composables/useVesselSearch';
+//import { useVesselSearch } from '@/composables/useVesselSearch';
 import { useVesselDataStore } from '@/stores/vessel-data-store';
 
 
@@ -63,5 +85,7 @@ function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value;
 }
 
-const { mmsi, loading, searchByMmsi } = useVesselSearch();
+//const { mmsi, loading, searchByMmsi } = useVesselSearch();
+
+const allVisible = computed(() => vesselDataStore.vessels.every((v) => v.visible));
 </script>

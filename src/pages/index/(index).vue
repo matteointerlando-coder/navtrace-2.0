@@ -11,8 +11,7 @@ import 'leaflet/dist/leaflet.css';
 import { useVesselDataStore } from '../../stores/vessel-data-store';
 
 let map: L.Map | null = null;
-//let currentMarker: L.Marker | null = null;
-let currentLine: L.Polyline | null = null;
+const polylines = new Map<string, L.Polyline>();
 const vesselDataStore = useVesselDataStore();
 
 onMounted(() => {
@@ -27,28 +26,57 @@ onMounted(() => {
   }).addTo(map);
 });
 
+watch(
+  () => ({
+    visible: vesselDataStore.visibleVessels.map((v) => v.id),
+    activeId: vesselDataStore.activeVesselId,
+    vessels: vesselDataStore.vessels,
+  }),
+  () => {
+    if (!map) return;
 
-/*
-watch(() => vesselDataStore.points, (points) => {
-  if (!map || points.length === 0) return;
-  const first = points[0];
-  console.log("first point: ", first);
-  if (!first) return;
-  currentMarker?.remove();
-  currentMarker = L.marker([first.y, first.x]).addTo(map);
-  map.setView([first.y, first.x], 6);
-});
- */
+    const visibleIds = new Set(vesselDataStore.visibleVessels.map((v) => v.id));
 
-watch(() => vesselDataStore.activeVessel?.line ?? [], (line) => {
-  currentLine?.remove();
-  currentLine = null;
-  if (!map || line.length === 0) return;
-  currentLine = L.polyline(line, { color: 'red' }).addTo(map);
+    // rimuovi polyline di vessel non più visibili
+    for (const [id, line] of polylines) {
+      if (!visibleIds.has(id)) {
+        line.remove();
+        polylines.delete(id);
+      }
+    }
+
+    // aggiungi o aggiorna polyline di vessel visibili
+    for (const vessel of vesselDataStore.visibleVessels) {
+      const isActive = vessel.id === vesselDataStore.activeVesselId;
+      const weight = isActive ? 4 : 2;
+      const opacity = isActive ? 1 : 0.5;
+
+      if (polylines.has(vessel.id)) {
+        polylines.get(vessel.id)!.setStyle({ weight, opacity });
+      } else {
+        const line = L.polyline(vessel.line, {
+          color: vessel.color,
+          weight,
+          opacity,
+        }).addTo(map);
+        polylines.set(vessel.id, line);
+      }
+    }
+  },
+  { deep: true },
+);
+
+watch(() => vesselDataStore.activeVesselId, (id) => {
+  if (!id || !map) return;
+  const line = polylines.get(id);
+  if (line && line.getBounds().isValid()) {
+    map.fitBounds(line.getBounds(), { padding: [40, 40] });
+  }
 });
- 
+
 onBeforeUnmount(() => {
   map?.remove();
   map = null;
+  polylines.clear();
 });
 </script>

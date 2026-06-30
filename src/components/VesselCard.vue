@@ -3,11 +3,23 @@
     group="vessels"
     @show="store.setActiveVessel(vessel.id)"
     @hide="store.setActiveVessel(null)"
-  >
+    >
     <template v-slot:header>
+      <q-item-section avatar>
+        <q-icon name="circle" :style="{ color: vessel.color }" />
+      </q-item-section>
       <q-item-section>{{ vessel.vessel_name ?? vessel.mmsi }}</q-item-section>
       <q-item-section side>
-        <q-btn flat round dense icon="delete" size="sm" @click.stop="store.removeVessel(vessel.id)" />
+        <div class="row items-center no-wrap">
+          <q-toggle
+            :model-value="vessel.visible"
+            size="sm"
+            dense
+            @update:model-value="store.toggleVesselVisibility(vessel.id)"
+            @click.stop
+          />
+          <q-btn flat round dense icon="delete" size="sm" @click.stop="store.removeVessel(vessel.id)" />
+        </div>
       </q-item-section>
     </template>
 
