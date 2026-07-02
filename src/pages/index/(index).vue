@@ -5,49 +5,52 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, watch } from 'vue';
+import { onMounted, onBeforeUnmount, watch, inject } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useVesselDataStore } from '../../stores/vessel-data-store';
+import { vesselDataKey } from '../../composables/useVesselData';
 
 let map: L.Map | null = null;
 const polylines = new Map<string, L.Polyline>();
-const vesselDataStore = useVesselDataStore();
+const routeMarkers = new Map<string, L.CircleMarker[]>();
+const { vessels, visibleVessels, activeVesselId } = inject(vesselDataKey)!;
 
 onMounted(() => {
   map = L.map('map', {
-    maxBounds: [[-90, -180], [90, 180]],
+    maxBounds: [[-110, -270], [110, 270]],
     maxBoundsViscosity: 1.0,
   }).setView([20.505, -0.09], 0);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 7,
-    minZoom: 3,
+    minZoom: 2,
     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(map);
 });
 
 watch(
   () => ({
-    visible: vesselDataStore.visibleVessels.map((v) => v.id),
-    activeId: vesselDataStore.activeVesselId,
-    vessels: vesselDataStore.vessels,
+    visible: visibleVessels.value.map((v) => v.id),
+    activeId: activeVesselId.value,
+    vessels: vessels.value,
   }),
   () => {
     if (!map) return;
 
-    const visibleIds = new Set(vesselDataStore.visibleVessels.map((v) => v.id));
+    const visibleIds = new Set(visibleVessels.value.map((v) => v.id));
 
-    // rimuovi polyline di vessel non più visibili
+    // rimuovi polyline e marker di vessel non più visibili
     for (const [id, line] of polylines) {
       if (!visibleIds.has(id)) {
         line.remove();
         polylines.delete(id);
+        routeMarkers.get(id)?.forEach((m) => m.remove());
+        routeMarkers.delete(id);
       }
     }
 
     // aggiungi o aggiorna polyline di vessel visibili
-    for (const vessel of vesselDataStore.visibleVessels) {
-      const isActive = vessel.id === vesselDataStore.activeVesselId;
+    for (const vessel of visibleVessels.value) {
+      const isActive = vessel.id === activeVesselId.value;
       const weight = isActive ? 4 : 2;
       const opacity = isActive ? 1 : 0.5;
 
@@ -60,13 +63,21 @@ watch(
           opacity,
         }).addTo(map);
         polylines.set(vessel.id, line);
+
+        const pts = vessel.line;   //perchè non computed?  Se lo usassi dentro una callback di watch, creeresti un nuovo computed ref ad ogni esecuzione del watch — che non viene mai pulito (memory leak) e non serve a niente.
+        if (pts.length > 0) {
+          const markerOpts = { radius: 6, color: vessel.color, weight: 2, fillOpacity: 1 };
+          const start = L.circleMarker(pts[0]!, { ...markerOpts, fillColor: '#22c55e' }).addTo(map);
+          const end = L.circleMarker(pts[pts.length - 1]!, { ...markerOpts, fillColor: '#ef4444' }).addTo(map);
+          routeMarkers.set(vessel.id, [start, end]);
+        }
       }
     }
   },
   { deep: true },
 );
 
-watch(() => vesselDataStore.activeVesselId, (id) => {
+watch(() => activeVesselId.value, (id) => {
   if (!id || !map) return;
   const line = polylines.get(id);
   if (line && line.getBounds().isValid()) {
@@ -78,5 +89,6 @@ onBeforeUnmount(() => {
   map?.remove();
   map = null;
   polylines.clear();
+  routeMarkers.clear();
 });
 </script>
