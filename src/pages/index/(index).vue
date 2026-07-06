@@ -9,14 +9,21 @@ import { onMounted, onBeforeUnmount, watch, inject } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { vesselDataKey } from '../../composables/useVesselData';
+import {vesselTableKey} from '../../composables/useVesselTable';
 
 let map: L.Map | null = null;
+let hoverMarker: L.Marker | null = null;
+let resizeObserver: ResizeObserver | null = null;
 const polylines = new Map<string, L.Polyline>();
 const routeMarkers = new Map<string, L.CircleMarker[]>();
 const { vessels, visibleVessels, activeVesselId } = inject(vesselDataKey)!;
+const { activeRow } = inject(vesselTableKey)!;
+
 
 onMounted(() => {
-  map = L.map('map', {
+  const mapEl = document.getElementById('map')!;
+
+  map = L.map(mapEl, {
     maxBounds: [[-110, -270], [110, 270]],
     maxBoundsViscosity: 1.0,
   }).setView([20.505, -0.09], 0);
@@ -25,6 +32,12 @@ onMounted(() => {
     minZoom: 2,
     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(map);
+
+  //Leaflet non si accorge automaticamente se il contenitore (#map) cambia dimensione.
+  //Leaflet continua a renderizzare i tile per la vecchia dimensione più piccola, lasciando l'area "grigetta" nella zona liberata dal drawer.
+  //ResizeObserver sul contenitore della mappa che chiama map.invalidateSize() ogni volta che le dimensioni cambiano
+  resizeObserver = new ResizeObserver(() => map?.invalidateSize());
+  resizeObserver.observe(mapEl);
 });
 
 watch(
@@ -32,6 +45,7 @@ watch(
     visible: visibleVessels.value.map((v) => v.id),
     activeId: activeVesselId.value,
     vessels: vessels.value,
+    activeRow: activeRow.value,
   }),
   () => {
     if (!map) return;
@@ -73,6 +87,14 @@ watch(
         }
       }
     }
+
+    hoverMarker?.remove();
+    hoverMarker = null;
+
+    if (activeRow.value) {
+      const { lat, lon } = activeRow.value;
+      hoverMarker = L.marker([lat, lon]).addTo(map);
+    }
   },
   { deep: true },
 );
@@ -86,8 +108,11 @@ watch(() => activeVesselId.value, (id) => {
 });
 
 onBeforeUnmount(() => {
+  resizeObserver?.disconnect();
+  resizeObserver = null;
   map?.remove();
   map = null;
+  hoverMarker = null;
   polylines.clear();
   routeMarkers.clear();
 });
