@@ -56,6 +56,35 @@ interface CsvRow {
   end: string;
 }
 
+function formatDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(dateStr: string, days: number): string {
+  const date = new Date(dateStr);
+  date.setDate(date.getDate() + days);
+  return formatDate(date);
+}
+
+function fillMissingDates(row: CsvRow): CsvRow {
+  if (!row.start && !row.end) {
+    const start = new Date();
+    start.setFullYear(start.getFullYear() - 1);
+    const startStr = formatDate(start);
+    return { ...row, start: startStr, end: addDays(startStr, 1) };
+  }
+
+  if (!row.start) {
+    return { ...row, start: addDays(row.end, -1) };
+  }
+
+  if (!row.end) {
+    return { ...row, end: addDays(row.start, 1) };
+  }
+
+  return row;
+}
+
 function parseCsv(text: string): CsvRow[] {
   const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
   if (lines.length === 0) return [];
@@ -65,6 +94,8 @@ function parseCsv(text: string): CsvRow[] {
   const headers = lines[0]!.split(',').map((h) => h.trim().toLowerCase());
   return lines.slice(1).map((line) => {
     const values = line.split(',').map((v) => v.trim());
+    //console.log('CSV values:', values);
+
     const row = Object.fromEntries(headers.map((h, i) => [h, values[i] ?? '']));
 
     return row as unknown as CsvRow;
@@ -88,19 +119,23 @@ async function onSubmit() {
     const failures: string[] = [];
 
     for (const row of rows) {
-        
-      if ( !row.name || !row.mmsi || !row.start || !row.end) {
+
+      if (!row.name || !row.mmsi) {
         failures.push(`Riga incompleta (mmsi: ${row.mmsi || '?'})`);
         continue;
       }
 
+      const { start, end } = fillMissingDates(row);
+
+      //console.log(`Fetching history for MMSI: ${row.mmsi}, Start: ${start}, End: ${end}`);
+
       try {
-        const points = await fetchVesselHistory(row.mmsi, row.start, row.end);
+        const points = await fetchVesselHistory(row.mmsi, start, end);
         addVessel({
           vessel_name: row.name || null,
           mmsi: row.mmsi,
-          start_date: row.start,
-          end_date: row.end,
+          start_date: start,
+          end_date: end,
           points,
         });
       } catch (err) {

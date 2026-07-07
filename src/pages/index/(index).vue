@@ -17,7 +17,7 @@ let resizeObserver: ResizeObserver | null = null;
 const polylines = new Map<string, L.Polyline>();
 const routeMarkers = new Map<string, L.CircleMarker[]>();
 const { vessels, visibleVessels, activeVesselId } = inject(vesselDataKey)!;
-const { activeRow } = inject(vesselTableKey)!;
+const { activeRow, zoomRow, zoomSeq } = inject(vesselTableKey)!;
 
 interface PointPopupInfo {
   timestamp: string;
@@ -28,16 +28,24 @@ interface PointPopupInfo {
   cog: number | null;
 }
 
-function showPointPopup(point: PointPopupInfo) {
+function showPointPopup(point: PointPopupInfo, map: L.Map | null) {
   if (!map) return null;
   marker?.remove();
-  marker = L.marker([point.lat, point.lon]).addTo(map);
-  marker.bindPopup(`Name Vessel: ${point.vessel} <br>
+  const newMarker = L.marker([point.lat, point.lon]).addTo(map);
+  newMarker.bindPopup(`Name Vessel: ${point.vessel} <br>
   Timestamp: ${point.timestamp}<br>
   Lat: ${point.lat.toFixed(4)}<br>
   Lon: ${point.lon.toFixed(4)}<br>
   SOG: ${point.sog ?? 'n/d'} kn<br>
   COG: ${point.cog ?? 'n/d'}°`).openPopup();
+
+  newMarker.on('popupclose', () => {
+    if (marker === newMarker) {
+      newMarker.remove();
+      marker = null;
+    }
+  });
+  marker = newMarker;
   return marker;
 }
 
@@ -60,6 +68,8 @@ function nearestPointIndex(points: L.LatLng[], latlng: L.LatLng): number {
 }
 
 
+
+//disegno mappa 
 onMounted(() => {
   const mapEl = document.getElementById('map')!;
 
@@ -119,20 +129,19 @@ watch(
         polylines.set(vessel.id, line);
 
         line.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
           const idx = nearestPointIndex(vessel.line, e.latlng);
           const pt = vessel.points[idx];
           if (!pt) return;
-          const shown = showPointPopup({
+          showPointPopup({
             timestamp: pt.t,
             vessel: vessel.vessel_name,
             lat: pt.y,
             lon: pt.x,
             sog: pt.s,
             cog: pt.c,
-          });
-          setTimeout(() => {
-            if (marker === shown) hidePointPopup();
-          }, 2000);
+          }, map);
+          map!.flyTo([pt.y, pt.x], map!.getMaxZoom());
         });
 
         const pts = vessel.line;   //perchè non computed?  Se lo usassi dentro una callback di watch, creeresti un nuovo computed ref ad ogni esecuzione del watch — che non viene mai pulito (memory leak) e non serve a niente.
@@ -145,8 +154,9 @@ watch(
       }
     }
 
+    
     if (activeRow.value) {
-      showPointPopup(activeRow.value);
+      showPointPopup(activeRow.value, map);
     } else {
       hidePointPopup();
     }
@@ -160,6 +170,11 @@ watch(() => activeVesselId.value, (id) => {
   if (line && line.getBounds().isValid()) {
     map.fitBounds(line.getBounds(), { padding: [40, 40] });
   }
+});
+
+watch(() => zoomSeq.value, () => {
+  if (!map || !zoomRow.value) return;
+  map.flyTo([zoomRow.value.lat, zoomRow.value.lon], map.getMaxZoom());
 });
 
 onBeforeUnmount(() => {
