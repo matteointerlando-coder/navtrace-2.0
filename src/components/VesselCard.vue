@@ -1,8 +1,8 @@
 <template>
   <q-expansion-item
     group="vessels"
-    @show="setActiveVessel(vessel.id)"
-    @hide="setActiveVessel(null)"
+    @show="onShow"
+    @hide="onHide"
     >
     <template v-slot:header>
       <q-item-section avatar>
@@ -40,6 +40,18 @@ import { inject } from 'vue';
 import type { VesselEntry } from '../composables/useVesselData';
 import { vesselDataKey } from '../composables/useVesselData';
 
-defineProps<{ vessel: VesselEntry }>();
-const { removeVessel, toggleVesselVisibility, setActiveVessel } = inject(vesselDataKey)!;
+const props = defineProps<{ vessel: VesselEntry }>();
+const { removeVessel, toggleVesselVisibility, setVisible, setActiveVessel, activeVessel } =
+  inject(vesselDataKey)!;
+
+function onShow() {
+  setActiveVessel(props.vessel.id);
+  setVisible(props.vessel.id, true);
+}
+
+function onHide() {
+  if (activeVessel.value?.id === props.vessel.id) {
+    setActiveVessel(null);
+  }
+}
 </script>

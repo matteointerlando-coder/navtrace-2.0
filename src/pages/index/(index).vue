@@ -12,12 +12,52 @@ import { vesselDataKey } from '../../composables/useVesselData';
 import {vesselTableKey} from '../../composables/useVesselTable';
 
 let map: L.Map | null = null;
-let hoverMarker: L.Marker | null = null;
+let marker: L.Marker | null = null;
 let resizeObserver: ResizeObserver | null = null;
 const polylines = new Map<string, L.Polyline>();
 const routeMarkers = new Map<string, L.CircleMarker[]>();
 const { vessels, visibleVessels, activeVesselId } = inject(vesselDataKey)!;
 const { activeRow } = inject(vesselTableKey)!;
+
+interface PointPopupInfo {
+  timestamp: string;
+  vessel: string | null;
+  lat: number;
+  lon: number;
+  sog: number | null;
+  cog: number | null;
+}
+
+function showPointPopup(point: PointPopupInfo) {
+  if (!map) return null;
+  marker?.remove();
+  marker = L.marker([point.lat, point.lon]).addTo(map);
+  marker.bindPopup(`Name Vessel: ${point.vessel} <br>
+  Timestamp: ${point.timestamp}<br>
+  Lat: ${point.lat.toFixed(4)}<br>
+  Lon: ${point.lon.toFixed(4)}<br>
+  SOG: ${point.sog ?? 'n/d'} kn<br>
+  COG: ${point.cog ?? 'n/d'}°`).openPopup();
+  return marker;
+}
+
+function hidePointPopup() {
+  marker?.remove();
+  marker = null;
+}
+
+function nearestPointIndex(points: L.LatLng[], latlng: L.LatLng): number {
+  let nearestIndex = 0;
+  let minDist = Infinity;
+  points.forEach((p, i) => {
+    const dist = map!.distance(p, latlng);
+    if (dist < minDist) {
+      minDist = dist;
+      nearestIndex = i;
+    }
+  });
+  return nearestIndex;
+}
 
 
 onMounted(() => {
@@ -78,6 +118,23 @@ watch(
         }).addTo(map);
         polylines.set(vessel.id, line);
 
+        line.on('click', (e) => {
+          const idx = nearestPointIndex(vessel.line, e.latlng);
+          const pt = vessel.points[idx];
+          if (!pt) return;
+          const shown = showPointPopup({
+            timestamp: pt.t,
+            vessel: vessel.vessel_name,
+            lat: pt.y,
+            lon: pt.x,
+            sog: pt.s,
+            cog: pt.c,
+          });
+          setTimeout(() => {
+            if (marker === shown) hidePointPopup();
+          }, 2000);
+        });
+
         const pts = vessel.line;   //perchè non computed?  Se lo usassi dentro una callback di watch, creeresti un nuovo computed ref ad ogni esecuzione del watch — che non viene mai pulito (memory leak) e non serve a niente.
         if (pts.length > 0) {
           const markerOpts = { radius: 6, color: vessel.color, weight: 2, fillOpacity: 1 };
@@ -88,12 +145,10 @@ watch(
       }
     }
 
-    hoverMarker?.remove();
-    hoverMarker = null;
-
     if (activeRow.value) {
-      const { lat, lon } = activeRow.value;
-      hoverMarker = L.marker([lat, lon]).addTo(map);
+      showPointPopup(activeRow.value);
+    } else {
+      hidePointPopup();
     }
   },
   { deep: true },
@@ -112,7 +167,7 @@ onBeforeUnmount(() => {
   resizeObserver = null;
   map?.remove();
   map = null;
-  hoverMarker = null;
+  marker = null;
   polylines.clear();
   routeMarkers.clear();
 });

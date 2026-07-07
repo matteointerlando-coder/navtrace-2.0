@@ -50,6 +50,11 @@ export function useVesselData() {
     if (vessel) vessel.visible = !vessel.visible;
   }
 
+  function setVisible(id: string, visible: boolean) {
+    const vessel = vessels.value.find((v) => v.id === id);
+    if (vessel) vessel.visible = visible;
+  }
+
   function setAllVisible(visible: boolean) {
     vessels.value.forEach((v) => {
       v.visible = visible;
@@ -73,6 +78,7 @@ export function useVesselData() {
     addVessel,
     removeVessel,
     toggleVesselVisibility,
+    setVisible,
     setAllVisible,
     setActiveVessel,
     clearAll,

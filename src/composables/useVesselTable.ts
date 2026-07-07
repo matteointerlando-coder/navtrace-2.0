@@ -6,6 +6,8 @@ export interface ActiveRow {
   vessel: string | null;
   lat: number;
   lon: number;
+  sog: number | null;
+  cog: number | null;
 };
 
 

@@ -16,12 +16,16 @@
           <q-item-section avatar><q-icon name="add" /></q-item-section>
           <q-item-section><q-item-label>Add Vessels</q-item-label></q-item-section>
         </q-item>
+
+        <q-item clickable @click="showAddMultipleVessel = true">
+          <q-item-section avatar><q-icon name="add" /></q-item-section>
+          <q-item-section><q-item-label>Add Multiple Vessels</q-item-label></q-item-section>
+        </q-item>
        
         <!--<SearchVessel v-model="mmsi" :loading="loading" @search="searchByMmsi" />-->
 
         <template v-if="vessels.length">
           <q-separator spaced />
-
           <q-item>
             <q-item-section>
               <q-item-label caption>Tracks</q-item-label>
@@ -88,6 +92,11 @@
     <q-dialog v-model="showAddVessel">
       <AddVessel @done="showAddVessel = false" />
     </q-dialog>
+
+    <q-dialog v-model="showAddMultipleVessel">
+      <AddMultipleVessels @done="showAddMultipleVessel = false" />
+    </q-dialog>
+
   </q-layout>
 </template>
 
@@ -96,6 +105,7 @@ import { ref, computed, provide } from 'vue';
 import type { QTableProps } from 'quasar';
 //import SearchVessel from '@/components/searchVessel.vue';
 import AddVessel from '@/components/AddVessel.vue';
+import AddMultipleVessels from '@/components/AddMultipleVessels.vue';
 import VesselCard from '@/components/VesselCard.vue';
 //import { useVesselSearch } from '@/composables/useVesselSearch';
 import { useVesselData, vesselDataKey } from '@/composables/useVesselData';
@@ -113,6 +123,7 @@ const { setActiveRow } = vesselTable;
 const leftDrawerOpen = ref(false);
 const rightDrawerOpen = ref(false);
 const showAddVessel = ref(false);
+const showAddMultipleVessel = ref(false);
 const pagination = ref({rowsPerPage: 0})
 //const activeTableRow = ref<{ timestamp: string; vessel: string | null; lat: number; lon: number } | null>(null);
 
@@ -136,14 +147,20 @@ const columns: QTableProps['columns'] = [
   { name: 'lon', label: 'Lon', field: 'lon', align: 'left' },
 ];
 
+
+
 const rows = computed(() => {
   const vessel = activeVessel.value;
   if (!vessel) return [];
   return vessel.points.map((p) => ({
     timestamp: p.t,
-    vessel: vessel.vessel_name,
     lat: p.y,
     lon: p.x,
+    sog: p.s,
+    cog: p.c,
+    heading: p.h,
+    vessel: vessel.vessel_name,
+    //heading: p.h,
   }));
 });
 
@@ -154,7 +171,6 @@ function onRowMouseOver(row: (typeof rows.value)[number]) {
 function onRowMouseLeave() {
   setActiveRow(null);
 }
-
 
 
 
