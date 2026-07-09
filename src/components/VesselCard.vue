@@ -1,6 +1,7 @@
 <template>
   <q-expansion-item
     group="vessels"
+    :model-value="isOpen"
     @show="onShow"
     @hide="onHide"
     >
@@ -36,13 +37,15 @@
 </template>
 
 <script setup lang="ts">
-import { inject } from 'vue';
+import { computed, inject } from 'vue';
 import type { VesselEntry } from '../composables/useVesselData';
 import { vesselDataKey } from '../composables/useVesselData';
 
 const props = defineProps<{ vessel: VesselEntry }>();
 const { removeVessel, toggleVesselVisibility, setVisible, setActiveVessel, activeVessel } =
   inject(vesselDataKey)!;
+
+const isOpen = computed(() => activeVessel.value?.id === props.vessel.id);
 
 function onShow() {
   setActiveVessel(props.vessel.id);

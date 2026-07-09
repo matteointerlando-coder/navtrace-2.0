@@ -17,11 +17,11 @@ let resizeObserver: ResizeObserver | null = null;
 const polylines = new Map<string, L.Polyline>();
 const routeMarkers = new Map<string, { start: L.CircleMarker; end: L.CircleMarker; points: L.CircleMarker[] }>();
 
-const POINT_RADIUS = 3;
-const POINT_RADIUS_ACTIVE = 5;
-const POINT_RADIUS_HOVER_BONUS = 2;
-const ENDPOINT_RADIUS = 6;
-const ENDPOINT_RADIUS_ACTIVE = 8;
+const POINT_RADIUS = 2;
+const POINT_RADIUS_ACTIVE = 3;
+const POINT_RADIUS_HOVER_BONUS = 3;
+const ENDPOINT_RADIUS = POINT_RADIUS * 3;
+const ENDPOINT_RADIUS_ACTIVE = POINT_RADIUS_ACTIVE * 3;
 
 // Tolleranza (in pixel schermo) della semplificazione Douglas-Peucker per ogni
 // livello di zoom di distanza dal massimo: a zoom massimo tolleranza 0 (tutti i
@@ -33,11 +33,14 @@ const { activeRow, zoomRow, zoomSeq } = inject(vesselTableKey)!;
 interface PointPopupInfo {
   timestamp: string;
   vessel: string | null;
+  vesselId: string;
   lat: number;
   lon: number;
   sog: number | null;
   cog: number | null;
 }
+
+let popupVesselId: string | null = null;
 
 function showPointPopup(point: PointPopupInfo, map: L.Map | null) {
   if (!map) return null;
@@ -54,15 +57,18 @@ function showPointPopup(point: PointPopupInfo, map: L.Map | null) {
     if (marker === newMarker) {
       newMarker.remove();
       marker = null;
+      popupVesselId = null;
     }
   });
   marker = newMarker;
+  popupVesselId = point.vesselId;
   return marker;
 }
 
 function hidePointPopup() {
   marker?.remove();
   marker = null;
+  popupVesselId = null;
 }
 
 function nearestPointIndex(points: L.LatLng[], latlng: L.LatLng): number {
@@ -138,6 +144,7 @@ function createPointMarkers(
       showPointPopup({
         timestamp: point.t,
         vessel: vessel.vessel_name,
+        vesselId: vessel.id,
         lat: pt.lat,
         lon: pt.lng,
         sog: point.s,
@@ -160,7 +167,7 @@ function refreshVesselPoints(vessel: VesselEntry, currentMap: L.Map) {
   const tolerance = getSimplifyTolerance(currentMap);
   const indices = simplifyIndices(currentMap, vessel.line, tolerance);
 
-  line.setLatLngs(indices.map((i) => vessel.line[i]!));
+  line.setLatLngs(indices.map((i) => vessel.line[i]!)); //non ricrea la polyline, ne aggiorna solo i punti
 
   markers.points.forEach((m) => m.remove());
   const isActive = vessel.id === activeVesselId.value;
@@ -212,6 +219,8 @@ watch(
 
     const visibleIds = new Set(visibleVessels.value.map((v) => v.id));
 
+    console.log('Visible vessels:', visibleIds);
+
     // rimuovi polyline e marker di vessel non più visibili
     for (const [id, line] of polylines) {
       if (!visibleIds.has(id)) {
@@ -224,6 +233,9 @@ watch(
           markers.points.forEach((m) => m.remove());
         }
         routeMarkers.delete(id);
+        if (popupVesselId === id) {
+          hidePointPopup();
+        }
       }
     }
 
@@ -262,6 +274,7 @@ watch(
           showPointPopup({
             timestamp: pt.t,
             vessel: vessel.vessel_name,
+            vesselId: vessel.id,
             lat: pt.y,
             lon: pt.x,
             sog: pt.s,

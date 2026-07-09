@@ -38,12 +38,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject } from 'vue';
-import { fetchVesselHistory } from '../api/vesselService';
-import { vesselDataKey } from '../composables/useVesselData';
+import { ref } from 'vue';
+import { useAddVessel } from '../composables/useAddVessel';
 
 const emit = defineEmits<{ done: [] }>();
-const { addVessel } = inject(vesselDataKey)!;
+const { addVesselWithHistory } = useAddVessel();
 
 const file = ref<File | null>(null);
 const loading = ref(false);
@@ -129,17 +128,12 @@ async function onSubmit() {
 
       //console.log(`Fetching history for MMSI: ${row.mmsi}, Start: ${start}, End: ${end}`);
 
-      try {
-        const points = await fetchVesselHistory(row.mmsi, start, end);
-        addVessel({
-          vessel_name: row.name || null,
-          mmsi: row.mmsi,
-          start_date: start,
-          end_date: end,
-          points,
-        });
-      } catch (err) {
-        console.error(err);
+      const outcome = await addVesselWithHistory(
+        { name: row.name || null, mmsi: row.mmsi, start_date: start, end_date: end },
+        { onDuplicate: 'replace' },
+      );
+
+      if (outcome.status === 'error') {
         failures.push(`${row.mmsi}: errore nel recupero dei dati`);
       }
     }

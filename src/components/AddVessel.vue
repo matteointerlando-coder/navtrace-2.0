@@ -83,15 +83,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject } from 'vue';
-import { fetchVesselHistory } from '../api/vesselService';
+import { ref, computed } from 'vue';
 import { useAddVesselForm } from '../composables/useAddVesselForm';
-import { vesselDataKey } from '../composables/useVesselData';
+import { useAddVessel } from '../composables/useAddVessel';
 
 const emit = defineEmits<{ done: [] }>();
 
 const { vessel_name: name, mmsi, start_date, end_date } = useAddVesselForm();
-const { addVessel } = inject(vesselDataKey)!;
+const { addVesselWithHistory } = useAddVessel();
 
 const loading = ref(false);
 const error = ref<string | null>(null);
@@ -109,18 +108,19 @@ async function onSubmit() {
   error.value = null;
 
   try {
-    const points = await fetchVesselHistory(mmsi.value, start_date.value, end_date.value);
-    addVessel({
-      vessel_name: name.value || null,
+    const outcome = await addVesselWithHistory({
+      name: name.value || null,
       mmsi: mmsi.value,
       start_date: start_date.value,
       end_date: end_date.value,
-      points,
     });
-    emit('done');
-  } catch (err) {
-    error.value = 'Errore nel recupero dei dati. Controlla MMSI e date.';
-    console.error(err);
+
+    if (outcome.status === 'error') {
+      error.value = outcome.message;
+      return;
+    }
+
+    if (outcome.status === 'added') emit('done');
   } finally {
     loading.value = false;
   }

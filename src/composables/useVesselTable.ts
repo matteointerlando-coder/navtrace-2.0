@@ -4,6 +4,7 @@ import { ref, type InjectionKey } from 'vue';
 export interface ActiveRow {
   timestamp: string;
   vessel: string | null;
+  vesselId: string;
   lat: number;
   lon: number;
   sog: number | null;

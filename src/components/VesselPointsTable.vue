@@ -55,6 +55,7 @@ const rows = computed(() => {
     cog: p.c,
     heading: p.h,
     vessel: vessel.vessel_name,
+    vesselId: vessel.id,
   }));
 });
 

@@ -5,7 +5,7 @@ import { LatLng } from 'leaflet';
 const PALETTE = [
   '#e6194b', '#3cb44b', '#4363d8', '#f58231',
   '#911eb4', '#42d4f4', '#f032e6', '#bfef45',
-  '#fabed4', '#469990', '#dcbeff', '#9A6324',
+  '#d44278', '#469990', '#ba95e4', '#9A6324',
 ];
 
 const STORAGE_KEY = 'vesselData';
@@ -56,6 +56,10 @@ export function useVesselData() {
   const vessels = ref<VesselEntry[]>([]);
   const activeVesselId = ref<string | null>(null);
   const restoring = ref(false);
+  // Contatore monotono per l'assegnazione dei colori: non va mai decrementato
+  // in removeVessel, altrimenti un reload (remove + add) può riassegnare lo
+  // stesso indice di colore di un vessel ancora presente.
+  const colorCounter = ref(0);
 
 
   const activeVessel = computed(
@@ -87,7 +91,8 @@ export function useVesselData() {
 
   function addVessel(data: Omit<VesselEntry, 'id' | 'line' | 'color' | 'visible'>) {
 
-    const color = PALETTE[vessels.value.length % PALETTE.length] ?? PALETTE[0]!;
+    const color = PALETTE[colorCounter.value % PALETTE.length] ?? PALETTE[0]!;
+    colorCounter.value += 1;
     vessels.value.push(buildEntry({
       ...data,
       id: crypto.randomUUID(),
@@ -103,21 +108,34 @@ export function useVesselData() {
     save();
   }
 
+  function deactiveVessel(id: string) {
+    const vessel = vessels.value.find((v) => v.id === id);
+    if (!vessel?.visible && activeVesselId.value === id) {
+      activeVesselId.value = null;
+    }
+
+  }
+
   function toggleVesselVisibility(id: string) {
     const vessel = vessels.value.find((v) => v.id === id);
-    if (vessel) vessel.visible = !vessel.visible;
+    if (vessel) {
+      vessel.visible = !vessel.visible;
+    }
+    deactiveVessel(id);
     save();
   }
 
   function setVisible(id: string, visible: boolean) {
     const vessel = vessels.value.find((v) => v.id === id);
     if (vessel) vessel.visible = visible;
+    deactiveVessel(id);
     save();
   }
 
   function setAllVisible(visible: boolean) {
     vessels.value.forEach((v) => {
       v.visible = visible;
+      deactiveVessel(v.id);
     });
     save();
   }
@@ -152,6 +170,7 @@ export function useVesselData() {
       );
 
       vessels.value = restored.filter((v): v is VesselEntry => v !== null);
+      colorCounter.value = vessels.value.length;
       if (saved.activeVesselId && vessels.value.some((v) => v.id === saved.activeVesselId)) {
         activeVesselId.value = saved.activeVesselId;
       }
