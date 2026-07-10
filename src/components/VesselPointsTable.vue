@@ -14,6 +14,7 @@
     <template v-slot:body="tableProps">
       <q-tr
         :props="tableProps"
+        :class="{ 'bg-warning': gapBoundaryTimestamps.has(tableProps.row.timestamp) }"
         @click="clickRow(tableProps.row)"
         @mouseover="onRowMouseOver(tableProps.row)"
         @mouseleave="onRowMouseLeave()"
@@ -24,6 +25,8 @@
       </q-tr>
     </template>
   </q-table>
+
+  <MissingPointsPanel />
 </template>
 
 <script setup lang="ts">
@@ -31,9 +34,21 @@ import { ref, computed, inject } from 'vue';
 import type { QTableProps } from 'quasar';
 import { vesselDataKey } from '../composables/useVesselData';
 import { vesselTableKey } from '../composables/useVesselTable';
+import { useMissingPoints } from '../composables/useMissingPoints';
+import MissingPointsPanel from './MissingPointsPanel.vue';
 
 const { activeVessel } = inject(vesselDataKey)!;
 const { setActiveRow, zoomToRow } = inject(vesselTableKey)!;
+const { activeVesselGaps } = useMissingPoints();
+
+const gapBoundaryTimestamps = computed(() => {
+  const set = new Set<string>();
+  activeVesselGaps.value.forEach((gap) => {
+    set.add(gap.from.t);
+    set.add(gap.to.t);
+  });
+  return set;
+});
 
 const pagination = ref({ rowsPerPage: 0 });
 

@@ -18,18 +18,44 @@ function toIso(dateStr: string): string {
   return dateStr.replace(' ', 'T') + ':00.000Z';
 }
 
+/*
 export async function fetchVesselHistory(
   mmsi: string,
   periodStart: string,
   periodEnd: string,
+
 ): Promise<ShortPositionUpdate[]> {
   const params = {
     periodStart: toIso(periodStart),
     periodEnd: toIso(periodEnd),
+    intervalSeconds: 1, 
   };
   console.log('vesselHistory request:', { mmsi, ...params });
   const response = await api.get<ShortPositionUpdate[]>(
     `/api/targets/${mmsi}/history`,
+    //'/api/providers/{providerId}/history/{mmsi}',
+    { params },
+  );
+  console.log('vesselHistory raw response:', response.data);
+  return response.data;
+}*/
+
+export async function fetchVesselHistory(
+  mmsi: string,
+  periodStart: string,
+  periodEnd: string,
+
+): Promise<ShortPositionUpdate[]> {
+  const params = {
+    periodStart: toIso(periodStart),
+    periodEnd: toIso(periodEnd),
+    intervalSeconds: 120, 
+  };
+
+  const providerId = import.meta.env.VITE_AIS_API_PROVIDER_ID;
+  console.log('vesselHistory request:', { mmsi, providerId, ...params });
+  const response = await api.get<ShortPositionUpdate[]>(
+    `/api/providers/${providerId}/history/${mmsi}`,
     { params },
   );
   console.log('vesselHistory raw response:', response.data);

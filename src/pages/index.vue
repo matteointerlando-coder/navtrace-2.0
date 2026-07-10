@@ -22,7 +22,7 @@
           <q-item-section><q-item-label>Add Multiple Vessels</q-item-label></q-item-section>
         </q-item>
        
-        <!--<SearchVessel v-model="mmsi" :loading="loading" @search="searchByMmsi" />-->
+
 
         <q-item v-if="restoring">
           <q-item-section avatar><q-spinner color="primary" /></q-item-section>
