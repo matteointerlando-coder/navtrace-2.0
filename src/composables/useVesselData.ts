@@ -1,82 +1,14 @@
 import { ref, computed, type InjectionKey } from 'vue';
 import { fetchVesselHistory, type ShortPositionUpdate } from '../api/vesselService';
-import { LatLng } from 'leaflet';
+import type { LatLng } from 'leaflet';
+import { unwrapLongitudes, recenterLine } from '../utils/lineGeometry';
+import { loadPersisted, persist } from './useVesselPersistence';
 
 const PALETTE = [
   '#e6194b', '#3cb44b', '#4363d8', '#f58231',
   '#911eb4', '#42d4f4', '#f032e6', '#bfef45',
   '#d44278', '#469990', '#ba95e4', '#9A6324',
 ];
-
-const STORAGE_KEY = 'vesselData';
-
-// Solo i metadati vengono persistiti: points/line vengono ri-scaricati al
-// restore per evitare di saturare il localStorage con tracce lunghe.
-interface PersistedVessel {
-  id: string;
-  vessel_name: string | null;
-  mmsi: string;
-  start_date: string;
-  end_date: string;
-  intervalSeconds: number;
-  color: string;
-  visible: boolean;
-}
-
-interface PersistedState {
-  vessels: PersistedVessel[];
-  activeVesselId: string | null;
-}
-
-function loadPersisted(): PersistedState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as PersistedState) : { vessels: [], activeVesselId: null };
-  } catch {
-    return { vessels: [], activeVesselId: null };
-  }
-}
-
-function persist(state: PersistedState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-
-function unwrapLongitudes(points: ShortPositionUpdate[]): LatLng[] {
-  const line: LatLng[] = [];
-  let offset = 0;
-  let prevLon: number | null = null;
-
-  for (const p of points) {
-    let lon = p.x + offset;
-    if (prevLon !== null) {
-      const diff = lon - prevLon;
-      if (diff > 180) {
-        offset -= 360;
-        lon -= 360;
-      } else if (diff < -180) {
-        offset += 360;
-        lon += 360;
-      }
-    }
-    line.push(new LatLng(p.y, lon));
-    prevLon = lon;
-  }
-
-  return line;
-}
-
-
-function recenterLine(line: LatLng[]): LatLng[] {
-  if (line.length === 0) return line;
-
-  const lons = line.map((ll) => ll.lng);
-  const center = (Math.min(...lons) + Math.max(...lons)) / 2;
-  const shift = -360 * Math.round(center / 360);
-  if (shift === 0) return line;
-
-  return line.map((ll) => new LatLng(ll.lat, ll.lng + shift));
-}
 
 export interface VesselEntry {
   id: string;
@@ -96,9 +28,7 @@ export function useVesselData() {
   const activeVesselId = ref<string | null>(null);
   const restoring = ref(false);
   const resampling = ref(false);
-  // Contatore monotono per l'assegnazione dei colori: non va mai decrementato
-  // in removeVessel, altrimenti un reload (remove + add) può riassegnare lo
-  // stesso indice di colore di un vessel ancora presente.
+
   const colorCounter = ref(0);
 
   const activeVessel = computed(

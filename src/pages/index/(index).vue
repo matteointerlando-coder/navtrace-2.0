@@ -9,7 +9,7 @@ import { onMounted, onBeforeUnmount, watch, inject } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { vesselDataKey } from '../../composables/useVesselData';
-import { vesselTableKey } from '../../composables/useVesselTable';
+import { activeRowKey } from '../../composables/useActiveRow';
 import { usePointPopup } from '../../composables/usePointPopup';
 import { useVesselLayers } from '../../composables/useVesselLayers';
 
@@ -17,7 +17,7 @@ let map: L.Map | null = null;
 let resizeObserver: ResizeObserver | null = null;
 
 const { vessels, visibleVessels, activeVesselId, setActiveVessel } = inject(vesselDataKey)!;
-const { activeRow, zoomRow, zoomSeq, selectRowFromMap } = inject(vesselTableKey)!;
+const { activeRow, zoomRow, zoomSeq, selectRowFromMap } = inject(activeRowKey)!;
 
 const { showPointPopup, hidePointPopup, isPopupFor } = usePointPopup();
 

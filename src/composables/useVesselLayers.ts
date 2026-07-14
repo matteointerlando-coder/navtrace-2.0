@@ -1,19 +1,9 @@
 import L from 'leaflet';
 import { watch, type ComputedRef, type Ref } from 'vue';
 import type { VesselEntry } from './useVesselData';
-import type { ActiveRow } from './useVesselTable';
-
-const POINT_RADIUS = 2;
-const POINT_RADIUS_ACTIVE = 3;
-const POINT_RADIUS_HOVER_BONUS = 3;
-const ENDPOINT_RADIUS = POINT_RADIUS * 3;
-const ENDPOINT_RADIUS_ACTIVE = POINT_RADIUS_ACTIVE * 3;
-
-// Tolleranza (in pixel schermo) della semplificazione Douglas-Peucker per ogni
-// livello di zoom di distanza dal massimo: a zoom massimo tolleranza 0 (tutti i
-// punti), a zoom minimo tolleranza più alta (pochi punti, linea più leggera).
-const SIMPLIFY_TOLERANCE_PER_ZOOM_LEVEL = 0.3;
-
+import type { ActiveRow } from './useActiveRow';
+import { getSimplifyTolerance, simplifyIndices, nearestPointIndex } from '../utils/lineSimplify';
+import { useVesselMarkers, POINT_RADIUS, POINT_RADIUS_ACTIVE, ENDPOINT_RADIUS } from './useVesselMarkers';
 
 // Mostrare/nascondere un vessel diventa un solo addLayer/removeLayer sul
 // gruppo, invece di aggiungere/rimuovere ogni singolo layer dalla mappa.
@@ -46,98 +36,7 @@ export function useVesselLayers(options: VesselLayersOptions) {
   const { getMap, vessels, visibleVessels, activeVesselId, hidePointPopup, isPopupFor, setActiveVessel, selectRowFromMap } = options;
 
   const vesselLayers = new Map<string, VesselLayer>();
-
-  function nearestPointIndex(points: L.LatLng[], latlng: L.LatLng, currentMap: L.Map): number {
-    let nearestIndex = 0;
-    let minDist = Infinity;
-    points.forEach((p, i) => {
-      const dist = currentMap.distance(p, latlng);
-      if (dist < minDist) {
-        minDist = dist;
-        nearestIndex = i;
-      }
-    });
-    return nearestIndex;
-  }
-
-  // più siamo lontani dallo zoom massimo, più punti vengono scartati
-  function getSimplifyTolerance(currentMap: L.Map): number {
-    const levelsFromMax = Math.max(0, currentMap.getMaxZoom() - currentMap.getZoom());
-    return levelsFromMax * SIMPLIFY_TOLERANCE_PER_ZOOM_LEVEL;
-  }
-
-  // Douglas-Peucker (L.LineUtil.simplify) applicato in coordinate schermo.
-  // Ritorna gli indici (nell'array originale) dei punti da tenere, estremi inclusi.
-  function simplifyIndices(currentMap: L.Map, latlngs: L.LatLng[], tolerancePx: number): number[] {
-    if (latlngs.length < 3 || tolerancePx === 0) {
-      return latlngs.map((_, i) => i);
-    }
-    const projected = latlngs.map((ll, idx) => {
-      const p = currentMap.latLngToLayerPoint(ll) as L.Point & { idx: number };
-      p.idx = idx;
-      return p;
-    });
-    const simplified = L.LineUtil.simplify(projected, tolerancePx) as Array<L.Point & { idx: number }>;
-    return simplified.map((p) => p.idx);
-  }
-
-  function createPointMarkers(
-    vessel: VesselEntry,
-    indices: number[],
-    pointRadius: number,
-    group: L.LayerGroup,
-    currentMap: L.Map,
-  ): L.CircleMarker[] {
-    return indices.map((i) => {
-      const pt = vessel.line[i]!;
-      const point = vessel.points[i]!;
-      const m = L.circleMarker(pt, {
-        radius: pointRadius,
-        color: vessel.color,
-        weight: 2,
-        fillOpacity: 1,
-      }).addTo(group);
-
-      m.bindTooltip(point.t, { direction: 'top', offset: [0, -pointRadius], opacity: 0.85 });
-
-      // ingrandisce il pallino al passaggio del mouse e lo riporta in primo piano,
-      // per facilitare il click su punti ravvicinati lungo la rotta
-      m.on('mouseover', () => {
-        const base = vessel.id === activeVesselId.value ? POINT_RADIUS_ACTIVE : POINT_RADIUS;
-        m.setStyle({ radius: base + POINT_RADIUS_HOVER_BONUS }).bringToFront();
-      });
-      m.on('mouseout', () => {
-        const base = vessel.id === activeVesselId.value ? POINT_RADIUS_ACTIVE : POINT_RADIUS;
-        m.setStyle({ radius: base });
-      });
-
-      m.on('click', (e) => {
-        L.DomEvent.stopPropagation(e);
-        //showPointPopup({...}, currentMap); // ora passa da selectRowFromMap, vedi commento su VesselLayersOptions.selectRowFromMap
-        selectRowFromMap({
-          timestamp: point.t,
-          vessel: vessel.vessel_name,
-          vesselId: vessel.id,
-          // pt.lat/pt.lng vengono da vessel.line, che può avere longitudini
-          // "srotolate" oltre ±180 quando la rotta attraversa l'antimeridiano:
-          // per il popup/tabella serve invece il dato grezzo normalizzato.
-          //lat: pt.lat,
-          //lon: pt.lng,
-          lat: point.y,
-          lon: point.x,
-          mapLon: pt.lng,
-          sog: point.s,
-          cog: point.c,
-        });
-        currentMap.flyTo([pt.lat, pt.lng], currentMap.getMaxZoom() - 3, { animate: false });
-        //al click il vessel diventa automaticamente active, il watcher su activeVesselId si occupa di aggiornare lo stile della rotta
-        setActiveVessel(vessel.id);
-
-      });
-
-      return m;
-    });
-  }
+  const { createPointMarkers, applyVesselStyle } = useVesselMarkers({ activeVesselId, selectRowFromMap, setActiveVessel });
 
   // Ricalcola, per una rotta già disegnata, il sottoinsieme di punti da mostrare
   // in base allo zoom corrente
@@ -156,19 +55,6 @@ export function useVesselLayers(options: VesselLayersOptions) {
     layer.points = createPointMarkers(vessel, indices, pointRadius, layer.group, currentMap);
   }
 
-
-  function applyVesselStyle(layer: VesselLayer, isActive: boolean) {
-    const weight = isActive ? 4 : 2;
-    const opacity = isActive ? 1 : 0.5;
-    const pointRadius = isActive ? POINT_RADIUS_ACTIVE : POINT_RADIUS;
-    const endpointRadius = isActive ? ENDPOINT_RADIUS_ACTIVE : ENDPOINT_RADIUS;
-
-    layer.line.setStyle({ weight, opacity });
-    layer.start.setStyle({ radius: endpointRadius, opacity });
-    layer.end.setStyle({ radius: endpointRadius, opacity });
-    layer.points.forEach((m) => m.setStyle({ radius: pointRadius, opacity }));
-  }
-
   // Costruisce da zero il LayerGroup di un vessel (polyline + start/end + punti),
   // senza aggiungerlo alla mappa
   function buildVesselLayer(vessel: VesselEntry, currentMap: L.Map): Omit<VesselLayer, 'stopVisibilityWatch'> | null {
@@ -185,7 +71,6 @@ export function useVesselLayers(options: VesselLayersOptions) {
       const idx = nearestPointIndex(vessel.line, e.latlng, currentMap);
       const pt = vessel.points[idx];
       if (!pt) return;
-      //showPointPopup({...}, currentMap); // ora passa da selectRowFromMap, vedi commento su VesselLayersOptions.selectRowFromMap
       selectRowFromMap({
         timestamp: pt.t,
         vessel: vessel.vessel_name,
@@ -200,7 +85,6 @@ export function useVesselLayers(options: VesselLayersOptions) {
       // "reale" normalizzata, saltando su un'altra copia del mondo rispetto a
       // quella in cui l'utente sta guardando la rotta se questa attraversa
       // l'antimeridiano: si usa invece la longitudine "srotolata" di vessel.line.
-      //currentMap.flyTo([pt.y, pt.x], currentMap.getMaxZoom() - 3);
       currentMap.flyTo(vessel.line[idx]!, currentMap.getMaxZoom() - 3, { animate: false });
       setActiveVessel(vessel.id);
     });

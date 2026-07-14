@@ -13,7 +13,10 @@ export interface ActiveRow {
 };
 
 
-export function useVesselTable() {
+// Stato di selezione condiviso tra mappa e tabella: quale riga è "attiva"
+// (popup + evidenziazione), e i segnali per far scattare zoom/scroll nell'una
+// o nell'altra a seconda di dove parte l'interazione.
+export function useActiveRow() {
   const activeRow = ref<ActiveRow | null>(null);
   const zoomRow = ref<ActiveRow | null>(null);
   const zoomSeq = ref(0);
@@ -56,4 +59,4 @@ export function useVesselTable() {
   };
 }
 
-export const vesselTableKey: InjectionKey<ReturnType<typeof useVesselTable>> = Symbol('vesselTable');
+export const activeRowKey: InjectionKey<ReturnType<typeof useActiveRow>> = Symbol('activeRow');

@@ -95,15 +95,15 @@ import VesselPointsTable from '@/components/VesselPointsTable.vue';
 import PointSlider from '@/components/PointSlider.vue';
 //import { useVesselSearch } from '@/composables/useVesselSearch';
 import { useVesselData, vesselDataKey } from '@/composables/useVesselData';
-import { useVesselTable, vesselTableKey } from '@/composables/useVesselTable';
+import { useActiveRow, activeRowKey } from '@/composables/useActiveRow';
 
 
 
 const vesselData = useVesselData();
-const vesselTable = useVesselTable();
+const activeRow = useActiveRow();
 
 provide(vesselDataKey, vesselData);
-provide(vesselTableKey, vesselTable);
+provide(activeRowKey, activeRow);
 
 
 const { vessels, restoring, setAllVisible, clearAll } = vesselData;

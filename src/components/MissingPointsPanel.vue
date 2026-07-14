@@ -26,11 +26,11 @@
 <script setup lang="ts">
 import { inject } from 'vue';
 import { vesselDataKey } from '../composables/useVesselData';
-import { vesselTableKey } from '../composables/useVesselTable';
+import { activeRowKey } from '../composables/useActiveRow';
 import { useMissingPoints, type PointGap } from '../composables/useMissingPoints';
 
 const { activeVessel } = inject(vesselDataKey)!;
-const { zoomToRow } = inject(vesselTableKey)!;
+const { zoomToRow } = inject(activeRowKey)!;
 const { activeVesselGaps } = useMissingPoints();
 
 function formatGapDuration(hours: number): string {

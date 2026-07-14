@@ -11,8 +11,8 @@ export const keycloak = new Keycloak({
   clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID!,
 });
 
-//stampa keycloak url
-console.log("Keycloak URL: ", import.meta.env.VITE_KEYCLOAK_URL, " Realm: ", import.meta.env.VITE_KEYCLOAK_REALM, " Client ID: ", import.meta.env.VITE_KEYCLOAK_CLIENT_ID, " Redirect URI: ", REDIRECT_URI);
+
+//console.log("Keycloak URL: ", import.meta.env.VITE_KEYCLOAK_URL, " Realm: ", import.meta.env.VITE_KEYCLOAK_REALM, " Client ID: ", import.meta.env.VITE_KEYCLOAK_CLIENT_ID, " Redirect URI: ", REDIRECT_URI);
 // Route accessibili senza autenticazione
 const PUBLIC_PATHS = ['/signin/callback'];
 

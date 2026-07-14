@@ -1,5 +1,5 @@
 import L from 'leaflet';
-import type { ActiveRow } from './useVesselTable';
+import type { ActiveRow } from './useActiveRow';
 
 // Gestisce il marker/popup del singolo punto selezionato sulla mappa
 export function usePointPopup() {

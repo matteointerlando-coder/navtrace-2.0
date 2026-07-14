@@ -25,6 +25,21 @@
           {{ col.value }}
         </q-td>
       </q-tr>
+      <q-tr v-if="isExpandedRow(tableProps.row)" :props="tableProps" no-hover>
+        <q-td :colspan="tableProps.cols.length">
+          <div class="row q-gutter-sm">
+            <q-chip icon="speed" color="blue-grey-7" text-color="white" dense>
+              SOG: {{ tableProps.row.sog ?? 'n/d' }} kn
+            </q-chip>
+            <q-chip icon="explore" color="blue-grey-7" text-color="white" dense>
+              COG: {{ tableProps.row.cog ?? 'n/d' }}°
+            </q-chip>
+            <q-chip icon="navigation" color="blue-grey-7" text-color="white" dense>
+              Heading: {{ tableProps.row.heading ?? 'n/d' }}°
+            </q-chip>
+          </div>
+        </q-td>
+      </q-tr>
     </template>
   </q-table>
 
@@ -32,15 +47,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject, watch } from 'vue';
+import { ref, computed, inject } from 'vue';
 import type { QTableProps, QTable } from 'quasar';
 import { vesselDataKey } from '../composables/useVesselData';
-import { vesselTableKey } from '../composables/useVesselTable';
+import { activeRowKey } from '../composables/useActiveRow';
 import { useMissingPoints } from '../composables/useMissingPoints';
+import { useTableRows } from '../composables/useTableRows';
+import { useRowSelection } from '../composables/useRowSelection';
 import MissingPointsPanel from './MissingPointsPanel.vue';
 
 const { activeVessel } = inject(vesselDataKey)!;
-const { activeRow, setActiveRow, zoomToRow, scrollSeq } = inject(vesselTableKey)!;
+const { activeRow, setActiveRow, zoomToRow, scrollSeq } = inject(activeRowKey)!;
 const { activeVesselGaps } = useMissingPoints();
 
 const tableRef = ref<QTable | null>(null);
@@ -63,82 +80,13 @@ const columns: QTableProps['columns'] = [
   { name: 'lon', label: 'Lon', field: 'lon', align: 'left' },
 ];
 
-const rows = computed(() => {
-  const vessel = activeVessel.value;
-  if (!vessel) return [];
-  return vessel.points.map((p, i) => ({
-    timestamp: p.t,
-    lat: p.y,
-    lon: p.x,
-    // mapLon (da vessel.line) puo' differire da lon se la rotta attraversa
-    // l'antimeridiano: serve per posizionare marker/flyTo, lon resta il dato
-    // "vero" mostrato in tabella/popup.
-    mapLon: vessel.line[i]!.lng,
-    sog: p.s,
-    cog: p.c,
-    heading: p.h,
-    vessel: vessel.vessel_name,
-    vesselId: vessel.id,
-  }));
-});
-
-const pinnedRow = ref<(typeof rows.value)[number] | null>(null);
-const hoverRow = ref<(typeof rows.value)[number] | null>(null);
-
-// activeRow è condiviso con la mappa: un click su un punto/linea in
-// useVesselLayers chiama setActiveRow, quindi la riga corrispondente si
-// evidenzia qui senza che tabella e mappa si conoscano direttamente.
-function isActiveRow(row: (typeof rows.value)[number]): boolean {
-  return activeRow.value?.vesselId === row.vesselId && activeRow.value?.timestamp === row.timestamp;
-}
-//let hoverTimeout: ReturnType<typeof setTimeout> | null = null;
-
-
-  /*
-function clearHoverTimeout() {
-  if (hoverTimeout) {
-    clearTimeout(hoverTimeout);
-    hoverTimeout = null;
-  }
-}*/
-
-function clickRow(row: (typeof rows.value)[number]) {
-  //clearHoverTimeout();
-  hoverRow.value = null;
-  pinnedRow.value = row;
-  zoomToRow(row);
-}
-
-function onRowMouseOver(row: (typeof rows.value)[number]) {
-  if (hoverRow.value === row) return;
-
-  //clearHoverTimeout();
-  hoverRow.value = row;
-  /*hoverTimeout = setTimeout(() => {
-    if (pinnedRow.value && pinnedRow.value !== row) {
-      pinnedRow.value = null;
-    }
-    setActiveRow(row);
-  }, 200);*/
-  setActiveRow(row);
-}
-
-function onRowMouseLeave() {
-  //clearHoverTimeout();
-  hoverRow.value = null;
-  if (pinnedRow.value) return;
-  setActiveRow(null);
-}
-
-// scatta solo quando il click parte dalla mappa (selectRowFromMap): porta
-// direttamente la riga corrispondente nel viewport della virtual-scroll,
-// senza scroll animato.
-watch(scrollSeq, () => {
-  if (!activeRow.value) return;
-  const index = rows.value.findIndex(
-    (row) => row.vesselId === activeRow.value!.vesselId && row.timestamp === activeRow.value!.timestamp,
-  );
-  if (index < 0) return;
-  tableRef.value?.scrollTo(index, 'center');
+const { rows } = useTableRows(activeVessel);
+const { isActiveRow, isExpandedRow, clickRow, onRowMouseOver, onRowMouseLeave } = useRowSelection({
+  rows,
+  tableRef,
+  activeRow,
+  setActiveRow,
+  zoomToRow,
+  scrollSeq,
 });
 </script>

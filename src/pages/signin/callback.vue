@@ -11,8 +11,7 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
-// Il boot keycloak.ts ha già scambiato il code per i token prima che questa
-// pagina venga renderizzata. Reindirizza alla home (il guard permetterà il passaggio).
+
 onMounted(() => {
   void router.replace('/');
 });
