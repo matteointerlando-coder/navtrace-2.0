@@ -21,6 +21,7 @@ const _name = ref<string | null>(saved['vessel_name'] ?? null);
 const _mmsi = ref<string | null>(saved['mmsi'] ?? null);
 const _start_date = ref<string | null>(saved['start_date'] ?? null);
 const _end_date = ref<string | null>(saved['end_date'] ?? null);
+const _intervalSeconds = ref<string | null>(saved['intervalSeconds'] ?? null);
 
 function save() {
   persist({
@@ -28,6 +29,7 @@ function save() {
     mmsi: _mmsi.value,
     start_date: _start_date.value,
     end_date: _end_date.value,
+    intervalSeconds: _intervalSeconds.value,
   });
 }
 
@@ -52,5 +54,10 @@ export function useAddVesselForm() {
     set: (v: string) => { _end_date.value = v || null; save(); },
   });
 
-  return { vessel_name, mmsi, start_date, end_date };
+  const intervalSeconds = computed({
+    get: () => _intervalSeconds.value ?? '',
+    set: (v: string) => { _intervalSeconds.value = v || null; save(); },
+  });
+
+  return { vessel_name, mmsi, start_date, end_date, intervalSeconds };
 }

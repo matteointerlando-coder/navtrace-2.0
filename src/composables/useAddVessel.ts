@@ -3,11 +3,13 @@ import { useQuasar } from 'quasar';
 import { fetchVesselHistory } from '../api/vesselService';
 import { vesselDataKey } from '../composables/useVesselData';
 
+
 export interface AddVesselInput {
   name: string | null;
   mmsi: string;
   start_date: string;
   end_date: string;
+  intervalSeconds: number;
 }
 
 export type AddVesselOutcome =
@@ -24,6 +26,7 @@ export interface AddVesselOptions {
 export function useAddVessel() {
   const $q = useQuasar();
   const { vessels, addVessel, removeVessel } = inject(vesselDataKey)!;
+
 
   function confirmReload(mmsi: string): Promise<boolean> {
     return new Promise((resolve) => {
@@ -51,7 +54,7 @@ export function useAddVessel() {
     }
 
     try {
-      const points = await fetchVesselHistory(input.mmsi, input.start_date, input.end_date);
+      const points = await fetchVesselHistory(input.mmsi, input.start_date, input.end_date, input.intervalSeconds);
 
       if (existing) removeVessel(existing.id);
       addVessel({
@@ -59,6 +62,7 @@ export function useAddVessel() {
         mmsi: input.mmsi,
         start_date: input.start_date,
         end_date: input.end_date,
+        intervalSeconds: input.intervalSeconds,
         points,
       });
 

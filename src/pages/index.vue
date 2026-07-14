@@ -64,7 +64,10 @@
     <q-drawer v-model="rightDrawerOpen" side="right" :width="500" show-if-above bordered>
       <q-list>
         <VesselPointsTable />
+        <q-separator spaced />
+        <PointSlider />
       </q-list>
+
     </q-drawer>
 
     <q-page-container>
@@ -89,15 +92,19 @@ import AddVessel from '@/components/AddVessel.vue';
 import AddMultipleVessels from '@/components/AddMultipleVessels.vue';
 import VesselCard from '@/components/VesselCard.vue';
 import VesselPointsTable from '@/components/VesselPointsTable.vue';
+import PointSlider from '@/components/PointSlider.vue';
 //import { useVesselSearch } from '@/composables/useVesselSearch';
 import { useVesselData, vesselDataKey } from '@/composables/useVesselData';
 import { useVesselTable, vesselTableKey } from '@/composables/useVesselTable';
 
 
+
 const vesselData = useVesselData();
 const vesselTable = useVesselTable();
+
 provide(vesselDataKey, vesselData);
 provide(vesselTableKey, vesselTable);
+
 
 const { vessels, restoring, setAllVisible, clearAll } = vesselData;
 

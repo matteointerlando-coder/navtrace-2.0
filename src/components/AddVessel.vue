@@ -71,6 +71,13 @@
             </q-icon>
           </template>
         </q-input>
+        <q-input
+        outlined
+        v-model="intervalSeconds"
+        label="Interval (seconds)"
+        type="number"
+        />
+
         <q-banner v-if="error" class="bg-negative text-white">{{ error }}</q-banner>
 
         <div class="row q-gutter-sm justify-end">
@@ -89,7 +96,7 @@ import { useAddVessel } from '../composables/useAddVessel';
 
 const emit = defineEmits<{ done: [] }>();
 
-const { vessel_name: name, mmsi, start_date, end_date } = useAddVesselForm();
+const { vessel_name: name, mmsi, start_date, end_date, intervalSeconds } = useAddVesselForm();
 const { addVesselWithHistory } = useAddVessel();
 
 const loading = ref(false);
@@ -113,6 +120,7 @@ async function onSubmit() {
       mmsi: mmsi.value,
       start_date: start_date.value,
       end_date: end_date.value,
+      intervalSeconds: parseInt(intervalSeconds.value, 10) || 120,
     });
 
     if (outcome.status === 'error') {

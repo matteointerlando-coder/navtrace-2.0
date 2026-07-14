@@ -18,6 +18,7 @@ interface PersistedVessel {
   mmsi: string;
   start_date: string;
   end_date: string;
+  intervalSeconds: number;
   color: string;
   visible: boolean;
 }
@@ -40,12 +41,44 @@ function persist(state: PersistedState) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+// Una rotta che attraversa l'antimeridiano (es. lon 179.8 -> -179.6) ha un
+// salto reale di ~0.6°, ma numericamente sembra un salto di quasi 360°:
+// disegnata così com'è, la polyline attraverserebbe tutta la mappa. Invece di
+// normalizzare ogni longitudine in ±180, si accumula un offset di multipli di
+// 360° così la sequenza continua a crescere/calare oltre ±180 (es. 179.8,
+// 180.4, 180.9...): Leaflet la proietta correttamente comunque, perché non
+// taglia a ±180 (il maxBounds dell'app arriva già a ±270 per questo motivo).
+function unwrapLongitudes(points: ShortPositionUpdate[]): LatLng[] {
+  const line: LatLng[] = [];
+  let offset = 0;
+  let prevLon: number | null = null;
+
+  for (const p of points) {
+    let lon = p.x + offset;
+    if (prevLon !== null) {
+      const diff = lon - prevLon;
+      if (diff > 180) {
+        offset -= 360;
+        lon -= 360;
+      } else if (diff < -180) {
+        offset += 360;
+        lon += 360;
+      }
+    }
+    line.push(new LatLng(p.y, lon));
+    prevLon = lon;
+  }
+
+  return line;
+}
+
 export interface VesselEntry {
   id: string;
   vessel_name: string | null;
   mmsi: string;
   start_date: string;
   end_date: string;
+  intervalSeconds: number;
   points: ShortPositionUpdate[];
   line: LatLng[];
   color: string;
@@ -56,6 +89,7 @@ export function useVesselData() {
   const vessels = ref<VesselEntry[]>([]);
   const activeVesselId = ref<string | null>(null);
   const restoring = ref(false);
+  const resampling = ref(false);
   // Contatore monotono per l'assegnazione dei colori: non va mai decrementato
   // in removeVessel, altrimenti un reload (remove + add) può riassegnare lo
   // stesso indice di colore di un vessel ancora presente.
@@ -75,6 +109,7 @@ export function useVesselData() {
         mmsi: v.mmsi,
         start_date: v.start_date,
         end_date: v.end_date,
+        intervalSeconds: v.intervalSeconds,
         color: v.color,
         visible: v.visible,
       })),
@@ -160,10 +195,10 @@ export function useVesselData() {
       const restored = await Promise.all(
         saved.vessels.map(async (v): Promise<VesselEntry | null> => {
           try {
-            const points = await fetchVesselHistory(v.mmsi, v.start_date, v.end_date);
+            const points = await fetchVesselHistory(v.mmsi, v.start_date, v.end_date, v.intervalSeconds);
             return buildEntry({ ...v, points });
           } catch (err) {
-            console.error(`Impossibile ripristinare il vessel ${v.mmsi}`, err);
+            console.error("Impossibile ripristinare il vessel ${v.mmsi}", err);
             return null;
           }
         }),
@@ -180,6 +215,30 @@ export function useVesselData() {
     }
   }
 
+
+  async function resampleAll(intervalSeconds: number) {
+    if (vessels.value.length === 0) return;
+
+    resampling.value = true;
+    try {
+      await Promise.all(
+        vessels.value.map(async (v) => {
+          try {
+            const points = await fetchVesselHistory(v.mmsi, v.start_date, v.end_date, intervalSeconds);
+            v.points = points;
+            v.line = points.map((p) => new LatLng(p.y, p.x));
+            v.intervalSeconds = intervalSeconds;
+          } catch (err) {
+            console.error("Impossibile ricampionare il vessel ${v.mmsi}", err);
+          }
+        }),
+      );
+      save();
+    } finally {
+      resampling.value = false;
+    }
+  }
+
   void restore();
 
   return {
@@ -188,6 +247,7 @@ export function useVesselData() {
     activeVessel,
     visibleVessels,
     restoring,
+    resampling,
     addVessel,
     removeVessel,
     toggleVesselVisibility,
@@ -195,6 +255,7 @@ export function useVesselData() {
     setAllVisible,
     setActiveVessel,
     clearAll,
+    resampleAll,
   };
 }
 

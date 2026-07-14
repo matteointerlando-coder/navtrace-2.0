@@ -40,16 +40,18 @@ export async function fetchVesselHistory(
   return response.data;
 }*/
 
+export const DEFAULT_INTERVAL_SECONDS = 120;
+
 export async function fetchVesselHistory(
   mmsi: string,
   periodStart: string,
   periodEnd: string,
-
+  intervalSeconds: number = DEFAULT_INTERVAL_SECONDS,
 ): Promise<ShortPositionUpdate[]> {
   const params = {
     periodStart: toIso(periodStart),
     periodEnd: toIso(periodEnd),
-    intervalSeconds: 120, 
+    intervalSeconds,
   };
 
   const providerId = import.meta.env.VITE_AIS_API_PROVIDER_ID;

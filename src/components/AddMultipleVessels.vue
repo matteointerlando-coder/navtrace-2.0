@@ -18,6 +18,15 @@
         clearable
       />
 
+      <q-input
+        outlined
+        v-model="intervalSeconds"
+        label="Interval (seconds)"
+        type="number"
+        class="q-mt-md"
+        hint="Applicato a tutti i vessel importati dal file"
+      />
+
       <q-banner v-if="error" class="bg-negative text-white q-mt-md" style="white-space: pre-line">
         {{ error }}
       </q-banner>
@@ -45,6 +54,7 @@ const emit = defineEmits<{ done: [] }>();
 const { addVesselWithHistory } = useAddVessel();
 
 const file = ref<File | null>(null);
+const intervalSeconds = ref('120');
 const loading = ref(false);
 const error = ref<string | null>(null);
 
@@ -116,6 +126,7 @@ async function onSubmit() {
     }
 
     const failures: string[] = [];
+    const parsedIntervalSeconds = parseInt(intervalSeconds.value, 10) || 120;
 
     for (const row of rows) {
 
@@ -129,7 +140,7 @@ async function onSubmit() {
       //console.log(`Fetching history for MMSI: ${row.mmsi}, Start: ${start}, End: ${end}`);
 
       const outcome = await addVesselWithHistory(
-        { name: row.name || null, mmsi: row.mmsi, start_date: start, end_date: end },
+        { name: row.name || null, mmsi: row.mmsi, start_date: start, end_date: end, intervalSeconds: parsedIntervalSeconds },
         { onDuplicate: 'replace' },
       );
 
