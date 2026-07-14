@@ -17,8 +17,7 @@ const SIMPLIFY_TOLERANCE_PER_ZOOM_LEVEL = 0.3;
 
 // Mostrare/nascondere un vessel diventa un solo addLayer/removeLayer sul
 // gruppo, invece di aggiungere/rimuovere ogni singolo layer dalla mappa.
-// Il gruppo resta in cache anche quando il vessel è nascosto, così un
-// toggle di visibilità non richiede di ricalcolare semplificazione e marker.
+// Il gruppo resta in cache anche quando il vessel è nascosto.
 interface VesselLayer {
   group: L.LayerGroup;
   line: L.Polyline;
@@ -33,14 +32,18 @@ export interface VesselLayersOptions {
   vessels: Ref<VesselEntry[]>;
   visibleVessels: ComputedRef<VesselEntry[]>;
   activeVesselId: Ref<string | null>;
-  showPointPopup: (point: ActiveRow, map: L.Map | null) => L.Marker | null;
   hidePointPopup: () => void;
   isPopupFor: (vesselId: string) => boolean;
+  setActiveVessel: (id: string | null) => void;
+  // Il click su un punto/linea passa da qui (invece che da una chiamata
+  // diretta a showPointPopup): aggiorna activeRow (popup + evidenziazione
+  // riga) e fa scattare lo scroll della tabella sulla riga corrispondente.
+  selectRowFromMap: (row: ActiveRow) => void;
 }
 
 
 export function useVesselLayers(options: VesselLayersOptions) {
-  const { getMap, vessels, visibleVessels, activeVesselId, showPointPopup, hidePointPopup, isPopupFor } = options;
+  const { getMap, vessels, visibleVessels, activeVesselId, hidePointPopup, isPopupFor, setActiveVessel, selectRowFromMap } = options;
 
   const vesselLayers = new Map<string, VesselLayer>();
 
@@ -110,16 +113,26 @@ export function useVesselLayers(options: VesselLayersOptions) {
 
       m.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
-        showPointPopup({
+        //showPointPopup({...}, currentMap); // ora passa da selectRowFromMap, vedi commento su VesselLayersOptions.selectRowFromMap
+        selectRowFromMap({
           timestamp: point.t,
           vessel: vessel.vessel_name,
           vesselId: vessel.id,
-          lat: pt.lat,
-          lon: pt.lng,
+          // pt.lat/pt.lng vengono da vessel.line, che può avere longitudini
+          // "srotolate" oltre ±180 quando la rotta attraversa l'antimeridiano:
+          // per il popup/tabella serve invece il dato grezzo normalizzato.
+          //lat: pt.lat,
+          //lon: pt.lng,
+          lat: point.y,
+          lon: point.x,
+          mapLon: pt.lng,
           sog: point.s,
           cog: point.c,
-        }, currentMap);
-        currentMap.flyTo([pt.lat, pt.lng], currentMap.getMaxZoom() - 3);
+        });
+        currentMap.flyTo([pt.lat, pt.lng], currentMap.getMaxZoom() - 3, { animate: false });
+        //al click il vessel diventa automaticamente active, il watcher su activeVesselId si occupa di aggiornare lo stile della rotta
+        setActiveVessel(vessel.id);
+
       });
 
       return m;
@@ -172,16 +185,24 @@ export function useVesselLayers(options: VesselLayersOptions) {
       const idx = nearestPointIndex(vessel.line, e.latlng, currentMap);
       const pt = vessel.points[idx];
       if (!pt) return;
-      showPointPopup({
+      //showPointPopup({...}, currentMap); // ora passa da selectRowFromMap, vedi commento su VesselLayersOptions.selectRowFromMap
+      selectRowFromMap({
         timestamp: pt.t,
         vessel: vessel.vessel_name,
         vesselId: vessel.id,
         lat: pt.y,
         lon: pt.x,
+        mapLon: vessel.line[idx]!.lng,
         sog: pt.s,
         cog: pt.c,
-      }, currentMap);
-      currentMap.flyTo([pt.y, pt.x], currentMap.getMaxZoom() - 3);
+      });
+      // flyTo su vessel.points (pt.y/pt.x) porterebbe la mappa alla longitudine
+      // "reale" normalizzata, saltando su un'altra copia del mondo rispetto a
+      // quella in cui l'utente sta guardando la rotta se questa attraversa
+      // l'antimeridiano: si usa invece la longitudine "srotolata" di vessel.line.
+      //currentMap.flyTo([pt.y, pt.x], currentMap.getMaxZoom() - 3);
+      currentMap.flyTo(vessel.line[idx]!, currentMap.getMaxZoom() - 3, { animate: false });
+      setActiveVessel(vessel.id);
     });
 
     const pts = vessel.line;

@@ -41,13 +41,7 @@ function persist(state: PersistedState) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-// Una rotta che attraversa l'antimeridiano (es. lon 179.8 -> -179.6) ha un
-// salto reale di ~0.6°, ma numericamente sembra un salto di quasi 360°:
-// disegnata così com'è, la polyline attraverserebbe tutta la mappa. Invece di
-// normalizzare ogni longitudine in ±180, si accumula un offset di multipli di
-// 360° così la sequenza continua a crescere/calare oltre ±180 (es. 179.8,
-// 180.4, 180.9...): Leaflet la proietta correttamente comunque, perché non
-// taglia a ±180 (il maxBounds dell'app arriva già a ±270 per questo motivo).
+
 function unwrapLongitudes(points: ShortPositionUpdate[]): LatLng[] {
   const line: LatLng[] = [];
   let offset = 0;
@@ -70,6 +64,18 @@ function unwrapLongitudes(points: ShortPositionUpdate[]): LatLng[] {
   }
 
   return line;
+}
+
+
+function recenterLine(line: LatLng[]): LatLng[] {
+  if (line.length === 0) return line;
+
+  const lons = line.map((ll) => ll.lng);
+  const center = (Math.min(...lons) + Math.max(...lons)) / 2;
+  const shift = -360 * Math.round(center / 360);
+  if (shift === 0) return line;
+
+  return line.map((ll) => new LatLng(ll.lat, ll.lng + shift));
 }
 
 export interface VesselEntry {
@@ -95,7 +101,6 @@ export function useVesselData() {
   // stesso indice di colore di un vessel ancora presente.
   const colorCounter = ref(0);
 
-
   const activeVessel = computed(
     () => vessels.value.find((v) => v.id === activeVesselId.value) ?? null,
   );
@@ -120,7 +125,8 @@ export function useVesselData() {
   function buildEntry(data: Omit<VesselEntry, 'line'>): VesselEntry {
     return {
       ...data,
-      line: data.points.map((p) => new LatLng(p.y, p.x)),
+      //line: data.points.map((p) => new LatLng(p.y, p.x)),
+      line: recenterLine(unwrapLongitudes(data.points)),
     };
   }
 
@@ -226,7 +232,8 @@ export function useVesselData() {
           try {
             const points = await fetchVesselHistory(v.mmsi, v.start_date, v.end_date, intervalSeconds);
             v.points = points;
-            v.line = points.map((p) => new LatLng(p.y, p.x));
+            //v.line = points.map((p) => new LatLng(p.y, p.x));
+            v.line = recenterLine(unwrapLongitudes(points));
             v.intervalSeconds = intervalSeconds;
           } catch (err) {
             console.error("Impossibile ricampionare il vessel ${v.mmsi}", err);

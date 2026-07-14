@@ -9,7 +9,8 @@ export function usePointPopup() {
   function showPointPopup(point: ActiveRow, map: L.Map | null) {
     if (!map) return null;
     marker?.remove();
-    const newMarker = L.marker([point.lat, point.lon]).addTo(map);
+
+    const newMarker = L.marker([point.lat, point.mapLon]).addTo(map);
     newMarker.bindPopup(`Name Vessel: ${point.vessel} <br>
     Timestamp: ${point.timestamp}<br>
     Lat: ${point.lat.toFixed(4)}<br>

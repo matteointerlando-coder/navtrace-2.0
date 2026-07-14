@@ -16,8 +16,8 @@ import { useVesselLayers } from '../../composables/useVesselLayers';
 let map: L.Map | null = null;
 let resizeObserver: ResizeObserver | null = null;
 
-const { vessels, visibleVessels, activeVesselId } = inject(vesselDataKey)!;
-const { activeRow, zoomRow, zoomSeq } = inject(vesselTableKey)!;
+const { vessels, visibleVessels, activeVesselId, setActiveVessel } = inject(vesselDataKey)!;
+const { activeRow, zoomRow, zoomSeq, selectRowFromMap } = inject(vesselTableKey)!;
 
 const { showPointPopup, hidePointPopup, isPopupFor } = usePointPopup();
 
@@ -26,9 +26,10 @@ const vesselLayers = useVesselLayers({
   vessels,
   visibleVessels,
   activeVesselId,
-  showPointPopup,
   hidePointPopup,
   isPopupFor,
+  setActiveVessel,
+  selectRowFromMap,
 });
 
 //disegno mappa
@@ -73,7 +74,8 @@ watch(() => activeRow.value, (row) => {
 
 watch(() => zoomSeq.value, () => {
   if (!map || !zoomRow.value) return;
-  map.flyTo([zoomRow.value.lat, zoomRow.value.lon], map.getMaxZoom() - 3);
+  //map.flyTo([zoomRow.value.lat, zoomRow.value.lon], map.getMaxZoom() - 3);
+  map.flyTo([zoomRow.value.lat, zoomRow.value.mapLon], map.getMaxZoom() - 3, { animate: false });
 });
 
 onBeforeUnmount(() => {

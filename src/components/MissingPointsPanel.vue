@@ -43,12 +43,18 @@ function formatGapDuration(hours: number): string {
 function zoomToGap(gap: PointGap) {
   const vessel = activeVessel.value;
   if (!vessel) return;
+  // gap.from è lo stesso oggetto (stessa reference) di un elemento di
+  // vessel.points, quindi indexOf trova l'indice corrispondente in
+  // vessel.line per recuperare la longitudine "srotolata".
+  const index = vessel.points.indexOf(gap.from);
+  const mapLon = index >= 0 ? vessel.line[index]!.lng : gap.from.x;
   zoomToRow({
     timestamp: gap.from.t,
     vessel: vessel.vessel_name,
     vesselId: vessel.id,
     lat: gap.from.y,
     lon: gap.from.x,
+    mapLon,
     sog: gap.from.s,
     cog: gap.from.c,
   });
